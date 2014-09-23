@@ -6,8 +6,8 @@ Rackspace public cloud
 
 ```
 heat stack-create \
-  -u https://raw.githubusercontent.com/anguslees/heat-devstack/master/devstack.yaml
-  -P key_name=$existing_ssh_key
+  -u https://raw.githubusercontent.com/anguslees/heat-devstack/master/devstack.yaml \
+  -P key_name=$existing_ssh_key \
   devstack
 ```
 
