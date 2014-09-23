@@ -20,7 +20,7 @@ runcmd:
   - cloud-init-per once devstack-co su -l stack -c 'cd /home/stack && git clone https://github.com/openstack-dev/devstack.git'
   - su -l stack -c 'cd /home/stack/devstack && git pull'
   - cloud-init-per instance devstack-localconf install -o stack -g stack -m 0644 /var/lib/devstack-local.conf /home/stack/devstack/local.conf
-  - test -r /var/lib/devstack-local.sh && cloud-init-per instance devstack-localsh -o stack -g stack -m 0755 /var/lib/devstack-local.sh /home/stack/devstack/local.sh
+  - test -r /var/lib/devstack-local.sh && cloud-init-per instance devstack-localsh install -o stack -g stack -m 0755 /var/lib/devstack-local.sh /home/stack/devstack/local.sh
   - su -l stack -c 'cd /home/stack/devstack && PATH=$PATH:/usr/sbin:/sbin ./stack.sh'
   - echo SUCCESS
 
