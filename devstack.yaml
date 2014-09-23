@@ -1,0 +1,100 @@
+heat_template_version: 2013-05-23
+
+description: |
+  Create a single node OpenStack mini-cluster using devstack.
+
+parameters:
+  flavor:
+    description: Virtual machine flavor
+    type: string
+    default: 8 GB Performance
+
+  image:
+    type: string
+    description: server image ID to use
+    default: Debian 7 (Wheezy) (PVHVM)
+
+  key_name:
+    description: Nova keypair for ssh access to server
+    type: string
+
+resources:
+
+  admin_password:
+    type: OS::Heat::RandomString
+    properties:
+      length: 32
+      sequence: lettersdigits
+
+  database_password:
+    type: OS::Heat::RandomString
+    properties:
+      length: 32
+      sequence: lettersdigits
+
+  rabbit_password:
+    type: OS::Heat::RandomString
+    properties:
+      length: 32
+      sequence: lettersdigits
+
+  service_password:
+    type: OS::Heat::RandomString
+    properties:
+      length: 32
+      sequence: lettersdigits
+
+  service_token:
+    type: OS::Heat::RandomString
+    properties:
+      length: 32
+      sequence: lettersdigits
+
+  devstack:
+    type: OS::Nova::Server
+    properties:
+      name:
+        str_replace:
+          template: $stack-devstack
+          params:
+            $stack: {get_param: "OS::stack_name"}
+      flavor: { get_param: flavor }
+      image: { get_param: image }
+      key_name: { get_param: key_name }
+      user_data_format: RAW
+      config_drive: "true"
+      user_data:
+        str_replace:
+          template: {get_file: cloud-config.yaml}
+          params:
+            "@ADMIN_PASSWORD@": {get_resource: admin_password}
+            "@DATABASE_PASSWORD@": {get_resource: database_password}
+            "@RABBIT_PASSWORD@": {get_resource: rabbit_password}
+            "@SERVICE_PASSWORD@": {get_resource: service_password}
+            "@SERVICE_TOKEN@": {get_resource: service_token}
+
+outputs:
+
+  admin_password:
+    description: Password for ``admin`` user
+    value: {get_resource: admin_password}
+
+  horizon_url:
+    description: Horizon web control panel URL for new devstack cluster
+    value:
+      str_replace:
+        template: "http://DEVSTACK_IP/"
+        params:
+          DEVSTACK_IP: {get_attr: [devstack, accessIPv4]}
+
+  openrc:
+    description: Example localrc
+    value:
+      str_replace:
+        template: |
+          OS_USERNAME=demo  # or admin
+          OS_PASSWORD=@ADMIN_PASSWORD@
+          OS_AUTH_URL=http://@DEVSTACK_IP@/v2.0/
+        params:
+          "@ADMIN_PASSWORD@": {get_resource: admin_password}
+          "@DEVSTACK_IP@": {get_attr: [devstack, accessIPv4]}

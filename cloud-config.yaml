@@ -1,0 +1,73 @@
+#cloud-config
+
+package_upgrade: true
+
+packages:
+  - git
+
+users:
+  - name: stack
+    sudo: ["ALL=(ALL) NOPASSWD:ALL\nDefaults:stack !requiretty"]
+    shell: /bin/bash
+
+output:
+  all: '| tee -a /var/log/cloud-init-output.log'
+
+runcmd:
+  - set -e -x
+  - install -d -o stack -g stack -m 0700 /home/stack/.ssh
+  - install -o stack -g stack -m 0644 /root/.ssh/authorized_keys /home/stack/.ssh/authorized_keys
+  - cloud-init-per once devstack-co su -l stack -c 'cd /home/stack && git clone https://github.com/openstack-dev/devstack.git'
+  - su -l stack -c 'cd /home/stack/devstack && git pull'
+  - cloud-init-per instance devstack-localconf install -o stack -g stack -m 0644 /var/lib/devstack-local.conf /home/stack/devstack/local.conf
+  - test -r /var/lib/devstack-local.sh && cloud-init-per instance devstack-localsh -o stack -g stack -m 0755 /var/lib/devstack-local.sh /home/stack/devstack/local.sh
+  - su -l stack -c 'cd /home/stack/devstack && PATH=$PATH:/usr/sbin:/sbin ./stack.sh'
+  - echo SUCCESS
+
+write_files:
+  - path: /var/lib/devstack-local.conf
+    content: |
+      [[local|localrc]]
+      # To use a private branch:
+      #NOVCA_REPO=
+      #NOVA_BRANCH=
+
+      ADMIN_PASSWORD=@ADMIN_PASSWORD@
+      DATABASE_PASSWORD=@DATABASE_PASSWORD@
+      RABBIT_PASSWORD=@RABBIT_PASSWORD@
+      SERVICE_PASSWORD=@SERVICE_PASSWORD@
+      SERVICE_TOKEN=@SERVICE_TOKEN@
+
+      LOGFILE=$DEST/logs/stack.sh.log
+      SCREEN_LOGDIR=$DEST/logs/screen
+
+  - path: /var/lib/devstack-local.sh
+    mode: 0755
+    content: |
+      #!/bin/bash
+
+      # Keep track of the devstack directory
+      TOP_DIR=$(cd $(dirname "$0") && pwd)
+
+      # Import common functions
+      source $TOP_DIR/functions
+
+      # Source openrc + stackrc + localrc for settings
+      source $TOP_DIR/stackrc
+
+      # Destination path for installation
+      : ${DEST:=/opt/stack}
+
+      set -x
+
+      if is_service_enabled nova; then
+        # Import keys from current user into default OpenStack user (usually ``demo``)
+        for i in $HOME/.ssh/id_rsa.pub $HOME/.ssh/id_dsa.pub; do
+          if [ -r "$i" ]; then
+            nova keypair-add --pub_key=$i heat-key
+            break
+          fi
+        done
+      fi
+
+      # Insert any other "standard" post-install setup you wish here
