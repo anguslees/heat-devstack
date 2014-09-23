@@ -12,7 +12,7 @@ parameters:
   image:
     type: string
     description: server image ID to use
-    default: Debian 7 (Wheezy) (PVHVM)
+    default: Ubuntu 14.04 LTS (Trusty Tahr) (PVHVM)
 
   key_name:
     description: Nova keypair for ssh access to server
